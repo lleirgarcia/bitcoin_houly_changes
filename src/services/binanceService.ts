@@ -68,13 +68,17 @@ export const getStoredHourlyData = async (): Promise<HourlyData[]> => {
   // Intentar obtener de Supabase si está configurado
   if (isSupabaseConfigured() && supabase) {
     try {
+      console.log('📡 Intentando obtener datos de Supabase...')
       const { data, error } = await supabase
         .from('btc_hourly_data')
         .select('*')
         .order('timestamp', { ascending: false })
         .limit(48)
 
-      if (!error && data && data.length > 0) {
+      if (error) {
+        console.warn('⚠️ Error de Supabase:', error.message)
+      } else if (data && data.length > 0) {
+        console.log('✅ Datos obtenidos de Supabase:', data.length, 'registros')
         // Convertir datos de Supabase al formato local
         return data.map(item => ({
           timestamp: item.timestamp,
@@ -83,10 +87,14 @@ export const getStoredHourlyData = async (): Promise<HourlyData[]> => {
           price: parseFloat(item.price.toString()),
           date: item.date
         }))
+      } else {
+        console.log('ℹ️ No hay datos en Supabase aún')
       }
     } catch (error) {
-      console.warn('Error fetching from Supabase, using localStorage:', error)
+      console.warn('⚠️ Error fetching from Supabase, using localStorage:', error)
     }
+  } else {
+    console.log('ℹ️ Supabase no está configurado, usando localStorage')
   }
 
   // Fallback a localStorage

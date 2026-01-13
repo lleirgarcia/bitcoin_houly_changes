@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from 'react'
-import { fetchBinanceData, saveHourlyData, getStoredHourlyData, HourlyData } from '../services/binanceService'
+import { fetchBinanceData, saveHourlyData, getStoredHourlyData } from '../services/binanceService'
 import { BinanceTickerResponse } from '../types'
 
 const ONE_HOUR = 60 * 60 * 1000 // 1 hora en milisegundos

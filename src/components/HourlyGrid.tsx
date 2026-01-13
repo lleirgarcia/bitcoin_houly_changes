@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { get24HourGrid } from '../services/binanceService'
-import { formatPrice, formatInteger } from '../utils/formatNumber'
+import { formatPrice } from '../utils/formatNumber'
 
 type GridItem = {
   hour: number
@@ -15,9 +15,15 @@ const HourlyGrid = () => {
   useEffect(() => {
     const loadGrid = async () => {
       setLoading(true)
-      const data = await get24HourGrid()
-      setGrid(data)
-      setLoading(false)
+      try {
+        const data = await get24HourGrid()
+        console.log('📊 Datos cargados para el grid:', data.length, 'horas')
+        setGrid(data)
+      } catch (error) {
+        console.error('❌ Error cargando grid:', error)
+      } finally {
+        setLoading(false)
+      }
     }
     loadGrid()
   }, [])
@@ -46,8 +52,34 @@ const HourlyGrid = () => {
           24H GRID
         </h2>
         <p className="text-xs text-gray-500 font-mono mb-6">
-          [LOADING_DATA]
+          [LOADING_DATA...]
         </p>
+        <div className="animate-pulse">
+          <div className="grid grid-cols-6 md:grid-cols-8 lg:grid-cols-12 gap-2">
+            {Array.from({ length: 24 }).map((_, i) => (
+              <div key={i} className="bg-[#0a0a0a] border border-gray-800 p-3 rounded h-20"></div>
+            ))}
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  if (grid.length === 0 || grid.every(item => item.changePercent === null && item.price === null)) {
+    return (
+      <div className="w-full">
+        <h2 className="text-2xl font-semibold text-gray-300 mb-2 font-['Orbitron'] tracking-wider">
+          24H GRID
+        </h2>
+        <p className="text-xs text-gray-500 font-mono mb-6">
+          [NO_DATA_AVAILABLE]
+        </p>
+        <div className="bg-[#0a0a0a] border border-gray-800 p-6 rounded text-center">
+          <p className="text-gray-500 font-mono mb-2">No hay datos disponibles aún</p>
+          <p className="text-xs text-gray-600 font-mono">
+            Los datos se cargarán automáticamente cuando el cron job se ejecute
+          </p>
+        </div>
       </div>
     )
   }
