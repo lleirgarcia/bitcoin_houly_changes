@@ -1,0 +1,63 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;900&family=Rajdhani:wght@300;400;500;600;700&display=swap');
+
+body {
+  margin: 0;
+  font-family: 'Rajdhani', 'Courier New', monospace;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background: #0a0a0a;
+  color: #e0e0e0;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+/* Scrollbar cyberpunk style */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #1a1a1a;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #4a5568;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #5a6578;
+}
+
+/* Subtle effects - matte style */
+@layer utilities {
+  .glow-cyan {
+    box-shadow: 0 0 2px rgba(100, 150, 150, 0.2);
+  }
+  
+  .glow-green {
+    box-shadow: 0 0 2px rgba(100, 150, 100, 0.2);
+  }
+  
+  .glow-pink {
+    box-shadow: 0 0 2px rgba(150, 100, 150, 0.2);
+  }
+  
+  .text-glow-cyan {
+    text-shadow: none;
+  }
+  
+  .text-glow-green {
+    text-shadow: none;
+  }
+  
+  .text-glow-pink {
+    text-shadow: none;
+  }
+}

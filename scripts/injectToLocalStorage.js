@@ -1,0 +1,43 @@
+/**
+ * Script para inyectar datos directamente en localStorage
+ * 
+ * INSTRUCCIONES:
+ * 1. Abre la aplicación en el navegador (http://localhost:3000)
+ * 2. Abre las DevTools (F12)
+ * 3. Ve a la pestaña "Console"
+ * 4. Copia y pega TODO este código
+ * 5. Presiona Enter
+ * 6. Recarga la página
+ */
+
+const data = [
+  {"timestamp":1768258800000,"hour":0,"priceChangePercent":3.04,"price":93450.85,"date":"2026-01-12T23:00:00.000Z"},
+  {"timestamp":1768262400000,"hour":1,"priceChangePercent":3.22,"price":93950.47,"date":"2026-01-13T00:00:00.000Z"},
+  {"timestamp":1768266000000,"hour":2,"priceChangePercent":3.17,"price":94004.07,"date":"2026-01-13T01:00:00.000Z"},
+  {"timestamp":1768269600000,"hour":3,"priceChangePercent":2.96,"price":93412.77,"date":"2026-01-13T02:00:00.000Z"},
+  {"timestamp":1768273200000,"hour":4,"priceChangePercent":3.15,"price":93935.74,"date":"2026-01-13T03:00:00.000Z"},
+  {"timestamp":1768276800000,"hour":5,"priceChangePercent":2.98,"price":94771.61,"date":"2026-01-13T04:00:00.000Z"},
+  {"timestamp":1768280400000,"hour":6,"priceChangePercent":3.2,"price":94082.79,"date":"2026-01-13T05:00:00.000Z"},
+  {"timestamp":1768284000000,"hour":7,"priceChangePercent":3.07,"price":93994.97,"date":"2026-01-13T06:00:00.000Z"},
+  {"timestamp":1768287600000,"hour":8,"priceChangePercent":3.35,"price":93914.86,"date":"2026-01-13T07:00:00.000Z"},
+  {"timestamp":1768291200000,"hour":9,"priceChangePercent":3.07,"price":93721.04,"date":"2026-01-13T08:00:00.000Z"},
+  {"timestamp":1768294800000,"hour":10,"priceChangePercent":3.34,"price":94741.08,"date":"2026-01-13T09:00:00.000Z"},
+  {"timestamp":1768298400000,"hour":11,"priceChangePercent":3.24,"price":94568.79,"date":"2026-01-13T10:00:00.000Z"},
+  {"timestamp":1768302000000,"hour":12,"priceChangePercent":3.34,"price":94758.17,"date":"2026-01-13T11:00:00.000Z"},
+  {"timestamp":1768305600000,"hour":13,"priceChangePercent":3.37,"price":94101.51,"date":"2026-01-13T12:00:00.000Z"},
+  {"timestamp":1768309200000,"hour":14,"priceChangePercent":3.25,"price":93314.65,"date":"2026-01-13T13:00:00.000Z"},
+  {"timestamp":1768312800000,"hour":15,"priceChangePercent":3.26,"price":94564.66,"date":"2026-01-13T14:00:00.000Z"},
+  {"timestamp":1768316400000,"hour":16,"priceChangePercent":3.03,"price":93961.26,"date":"2026-01-13T15:00:00.000Z"},
+  {"timestamp":1768320000000,"hour":17,"priceChangePercent":3.16,"price":93500.12,"date":"2026-01-13T16:00:00.000Z"},
+  {"timestamp":1768323600000,"hour":18,"priceChangePercent":3.06,"price":93371.85,"date":"2026-01-13T17:00:00.000Z"},
+  {"timestamp":1768327200000,"hour":19,"priceChangePercent":2.98,"price":94263.7,"date":"2026-01-13T18:00:00.000Z"},
+  {"timestamp":1768330800000,"hour":20,"priceChangePercent":3.01,"price":94242.31,"date":"2026-01-13T19:00:00.000Z"},
+  {"timestamp":1768334400000,"hour":21,"priceChangePercent":3.28,"price":94328.08,"date":"2026-01-13T20:00:00.000Z"},
+  {"timestamp":1768338000000,"hour":22,"priceChangePercent":3.37,"price":93603.78,"date":"2026-01-13T21:00:00.000Z"},
+  {"timestamp":1768341600000,"hour":23,"priceChangePercent":3.16,"price":94936.14,"date":"2026-01-13T22:00:00.000Z"}
+];
+
+localStorage.setItem('btc_hourly_data', JSON.stringify(data));
+console.log('✅ Datos inyectados en localStorage!');
+console.log('📊 Total de horas:', data.length);
+console.log('🔄 Recarga la página para ver los datos en el grid');
