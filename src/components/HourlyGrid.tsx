@@ -24,6 +24,8 @@ const HourlyGrid = () => {
   const [viewMode, setViewMode] = useState<'comparison' | 'hourly'>('comparison')
 
   useEffect(() => {
+    let lastTimestamp: number | null = null
+    
     const loadData = async () => {
       setLoading(true)
       try {
@@ -34,13 +36,49 @@ const HourlyGrid = () => {
         console.log('📊 Datos cargados para el grid:', comparisonData.length, 'horas')
         setGrid(comparisonData)
         setHourlyData(hourlyDataResult)
+        
+        // Guardar el timestamp más reciente para detectar cambios
+        const latestItem = hourlyDataResult.find(item => item.latestTimestamp !== null)
+        if (latestItem?.latestTimestamp) {
+          lastTimestamp = latestItem.latestTimestamp
+        }
       } catch (error) {
         console.error('❌ Error cargando grid:', error)
       } finally {
         setLoading(false)
       }
     }
+    
+    // Cargar datos iniciales
     loadData()
+    
+    // Verificar nuevos datos cada minuto (el cron se ejecuta cada hora, pero verificamos cada minuto)
+    const interval = setInterval(async () => {
+      try {
+        const [, hourlyDataResult] = await Promise.all([
+          get24HourGrid(),
+          getHourlyDataWithLatest()
+        ])
+        
+        // Verificar si hay un timestamp más reciente
+        const latestItem = hourlyDataResult.find(item => item.latestTimestamp !== null)
+        if (latestItem?.latestTimestamp && lastTimestamp && latestItem.latestTimestamp > lastTimestamp) {
+          console.log('🔄 Nuevos datos detectados, actualizando...')
+          // Recargar todos los datos
+          const [comparisonData, updatedHourlyData] = await Promise.all([
+            get24HourGrid(),
+            getHourlyDataWithLatest()
+          ])
+          setGrid(comparisonData)
+          setHourlyData(updatedHourlyData)
+          lastTimestamp = latestItem.latestTimestamp
+        }
+      } catch (error) {
+        console.error('❌ Error verificando nuevos datos:', error)
+      }
+    }, 60000) // Verificar cada 60 segundos
+    
+    return () => clearInterval(interval)
   }, [])
 
   const formatHour = (hour: number): string => {

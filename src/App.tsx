@@ -1,9 +1,20 @@
+import { useState, useEffect } from 'react'
 import { useBinanceHourly } from './hooks/useBinanceHourly'
 import BTCPriceCard from './components/BTCPriceCard'
 import HourlyGrid from './components/HourlyGrid'
 
 function App() {
   const { currentData, loading, error, lastFetch, refetch } = useBinanceHourly()
+  const [currentTime, setCurrentTime] = useState(new Date())
+
+  useEffect(() => {
+    // Actualizar el reloj cada segundo
+    const interval = setInterval(() => {
+      setCurrentTime(new Date())
+    }, 1000)
+
+    return () => clearInterval(interval)
+  }, [])
 
   return (
     <div className="min-h-screen bg-[#0a0a0a]">
@@ -13,7 +24,7 @@ function App() {
             TRADING_X
           </h1>
           <p className="text-gray-300 text-sm font-mono">
-            [BTC_MONITOR] :: Auto-update every 60min :: {new Date().toLocaleTimeString()}
+            [BTC_MONITOR] :: Auto-update every 60min :: {currentTime.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
           </p>
         </header>
 

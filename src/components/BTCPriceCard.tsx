@@ -35,9 +35,6 @@ const BTCPriceCard = ({ data, loading, lastFetch }: BTCPriceCardProps) => {
       <div className="flex items-center justify-between mb-6 border-b border-gray-700 pb-4">
         <div>
           <h3 className="text-2xl font-bold text-gray-100 font-['Orbitron'] tracking-wider">BTC/USDT</h3>
-          <p className="text-xs text-gray-300 font-mono mt-1">
-            {lastFetch ? `[UPDATE] ${lastFetch.toLocaleTimeString()}` : '[LOADING]'}
-          </p>
         </div>
         <div className="text-right">
           <div className={`text-4xl font-bold font-['Orbitron'] ${isPositive ? 'text-green-400' : 'text-red-400'}`}>
