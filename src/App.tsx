@@ -8,11 +8,11 @@ function App() {
   return (
     <div className="min-h-screen bg-[#0a0a0a]">
       <div className="container mx-auto px-4 py-8">
-        <header className="mb-8 border-b border-gray-700 pb-4">
-          <h1 className="text-5xl font-bold text-gray-300 mb-2 font-['Orbitron'] tracking-wider">
+        <header className="mb-8 border-b border-gray-600 pb-4">
+          <h1 className="text-5xl font-bold text-gray-100 mb-2 font-['Orbitron'] tracking-wider">
             TRADING_X
           </h1>
-          <p className="text-gray-500 text-sm font-mono">
+          <p className="text-gray-300 text-sm font-mono">
             [BTC_MONITOR] :: Auto-update every 60min :: {new Date().toLocaleTimeString()}
           </p>
         </header>
@@ -34,7 +34,7 @@ function App() {
           <BTCPriceCard data={currentData} loading={loading} lastFetch={lastFetch} />
         </div>
 
-        <div className="bg-[#111111] border border-gray-800 rounded-lg p-6">
+        <div className="bg-[#111111] border border-gray-700 rounded-lg p-6">
           <HourlyGrid />
         </div>
       </div>

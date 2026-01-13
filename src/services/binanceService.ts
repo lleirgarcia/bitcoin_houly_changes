@@ -17,12 +17,16 @@ export const saveHourlyData = async (data: BinanceTickerResponse): Promise<void>
   const hour = now.getHours()
   const timestamp = now.getTime()
   
+  // Obtener solo la fecha (sin hora) en formato YYYY-MM-DD
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+  const dateString = today.toISOString().split('T')[0] // Formato: YYYY-MM-DD
+  
   const hourlyData = {
-    timestamp,
+    date: dateString,
     hour,
     price: parseFloat(data.lastPrice),
     price_change_percent: parseFloat(data.priceChangePercent),
-    date: now.toISOString()
+    timestamp
   }
 
   // Intentar guardar en Supabase si está configurado
@@ -31,7 +35,7 @@ export const saveHourlyData = async (data: BinanceTickerResponse): Promise<void>
       const { error } = await supabase
         .from('btc_hourly_data')
         .upsert(hourlyData, {
-          onConflict: 'timestamp,hour',
+          onConflict: 'date,hour',
           ignoreDuplicates: false
         })
 
@@ -49,7 +53,7 @@ export const saveHourlyData = async (data: BinanceTickerResponse): Promise<void>
   }
 }
 
-const saveToLocalStorage = async (hourlyData: { timestamp: number; hour: number; price: number; price_change_percent: number; date: string }): Promise<void> => {
+const saveToLocalStorage = async (hourlyData: { date: string; hour: number; price: number; price_change_percent: number; timestamp: number }): Promise<void> => {
   const stored = await getStoredHourlyData()
   const data: HourlyData = {
     timestamp: hourlyData.timestamp,
@@ -69,11 +73,21 @@ export const getStoredHourlyData = async (): Promise<HourlyData[]> => {
   if (isSupabaseConfigured() && supabase) {
     try {
       console.log('📡 Intentando obtener datos de Supabase...')
+      // Obtener datos de hoy y ayer
+      const today = new Date()
+      today.setHours(0, 0, 0, 0)
+      const todayString = today.toISOString().split('T')[0]
+      
+      const yesterday = new Date(today)
+      yesterday.setDate(yesterday.getDate() - 1)
+      const yesterdayString = yesterday.toISOString().split('T')[0]
+      
       const { data, error } = await supabase
         .from('btc_hourly_data')
         .select('*')
-        .order('timestamp', { ascending: false })
-        .limit(48)
+        .in('date', [todayString, yesterdayString])
+        .order('date', { ascending: false })
+        .order('hour', { ascending: true })
 
       if (error) {
         console.warn('⚠️ Error de Supabase:', error.message)
@@ -85,7 +99,7 @@ export const getStoredHourlyData = async (): Promise<HourlyData[]> => {
           hour: item.hour,
           priceChangePercent: parseFloat(item.price_change_percent.toString()),
           price: parseFloat(item.price.toString()),
-          date: item.date
+          date: typeof item.date === 'string' ? item.date : item.date.toISOString().split('T')[0]
         }))
       } else {
         console.log('ℹ️ No hay datos en Supabase aún')
@@ -138,53 +152,58 @@ export const get24HourGrid = async (): Promise<Array<{ hour: number; changePerce
     }))
   }
 
-  const now = new Date()
-  const currentHour = now.getHours()
+  // Obtener fechas: hoy y ayer
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  const todayString = today.toISOString().split('T')[0]
   
-  // Crear array de 24 horas (últimas 24 horas desde la hora actual)
-  const grid = Array.from({ length: 24 }, (_, i) => {
-    const hour = (currentHour - 23 + i + 24) % 24
-    return { hour, changePercent: null as number | null, price: null as number | null }
-  })
+  const yesterday = new Date(today)
+  yesterday.setDate(yesterday.getDate() - 1)
+  const yesterdayString = yesterday.toISOString().split('T')[0]
   
-  // Agrupar datos por hora
-  const dataByHour = new Map<number, HourlyData[]>()
+  // Agrupar datos por fecha y hora
+  const dataByDateAndHour = new Map<string, HourlyData>()
   stored.forEach((data) => {
-    const hour = data.hour
-    if (!dataByHour.has(hour)) {
-      dataByHour.set(hour, [])
+    const dateStr = typeof data.date === 'string' ? data.date : new Date(data.date).toISOString().split('T')[0]
+    const key = `${dateStr}-${data.hour}`
+    // Si ya existe, mantener el más reciente (mayor timestamp)
+    const existing = dataByDateAndHour.get(key)
+    if (!existing || data.timestamp > existing.timestamp) {
+      dataByDateAndHour.set(key, { ...data, date: dateStr })
     }
-    dataByHour.get(hour)!.push(data)
   })
   
-  // Para cada hora en el grid, buscar el dato más reciente y comparar con el de hace ~24 horas
-  grid.forEach((gridItem) => {
-    const hour = gridItem.hour
-    const hourData = dataByHour.get(hour) || []
+  // Crear grid de 24 horas (0-23)
+  const grid = Array.from({ length: 24 }, (_, i) => {
+    const hour = i
+    const todayKey = `${todayString}-${hour}`
+    const yesterdayKey = `${yesterdayString}-${hour}`
     
-    if (hourData.length === 0) return
+    const todayData = dataByDateAndHour.get(todayKey)
+    const yesterdayData = dataByDateAndHour.get(yesterdayKey)
     
-    // Ordenar por timestamp (más reciente primero)
-    hourData.sort((a, b) => b.timestamp - a.timestamp)
-    
-    // Tomar el dato más reciente para esta hora
-    const latest = hourData[0]
-    
-    // Buscar el dato de la misma hora pero de hace aproximadamente 24 horas
-    const oneDayAgo = latest.timestamp - (24 * 60 * 60 * 1000)
-    const dayBefore = hourData.find((d) => {
-      const timeDiff = Math.abs(d.timestamp - oneDayAgo)
-      // Permitir un margen de ±2 horas para encontrar el dato más cercano
-      return timeDiff <= 2 * 60 * 60 * 1000 && d.timestamp < latest.timestamp
-    })
-    
-    if (dayBefore) {
-      const changePercent = ((latest.price - dayBefore.price) / dayBefore.price) * 100
-      gridItem.changePercent = changePercent
-      gridItem.price = latest.price
-    } else if (hourData.length > 0) {
-      // Si no hay dato de hace 24h, al menos mostrar el precio actual
-      gridItem.price = latest.price
+    if (todayData && yesterdayData) {
+      // Calcular cambio porcentual comparando con el día anterior
+      const changePercent = ((todayData.price - yesterdayData.price) / yesterdayData.price) * 100
+      return {
+        hour,
+        changePercent,
+        price: todayData.price
+      }
+    } else if (todayData) {
+      // Solo hay dato de hoy, mostrar precio sin cambio
+      return {
+        hour,
+        changePercent: null,
+        price: todayData.price
+      }
+    } else {
+      // No hay datos para esta hora
+      return {
+        hour,
+        changePercent: null,
+        price: null
+      }
     }
   })
   

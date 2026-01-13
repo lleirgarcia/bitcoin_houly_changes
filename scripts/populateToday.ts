@@ -58,6 +58,9 @@ async function populateToday() {
     let successCount = 0
     let errorCount = 0
 
+    // Obtener fecha en formato YYYY-MM-DD
+    const dateString = today.toISOString().split('T')[0]
+    
     // Procesar cada hora desde 00:00 hasta la hora actual
     for (let hour = 0; hour <= currentHour; hour++) {
       // Crear timestamp para esta hora del día
@@ -72,18 +75,18 @@ async function populateToday() {
       const hourChange = currentChange + (Math.random() - 0.5) * 0.5 // Pequeña variación en el cambio
       
       const hourlyData = {
-        timestamp,
+        date: dateString,
         hour,
         price: Math.round(hourPrice * 100) / 100, // Redondear a 2 decimales
         price_change_percent: Math.round(hourChange * 100) / 100,
-        date: hourDate.toISOString()
+        timestamp
       }
 
       try {
         const { error } = await supabase
           .from('btc_hourly_data')
           .upsert(hourlyData, {
-            onConflict: 'timestamp,hour',
+            onConflict: 'date,hour',
             ignoreDuplicates: false
           })
 

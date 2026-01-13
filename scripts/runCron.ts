@@ -41,12 +41,16 @@ async function runCron() {
     const hour = now.getHours()
     const timestamp = now.getTime()
     
+    // Obtener solo la fecha (sin hora) en formato YYYY-MM-DD
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+    const dateString = today.toISOString().split('T')[0] // Formato: YYYY-MM-DD
+    
     const hourlyData = {
-      timestamp,
+      date: dateString,
       hour,
       price: parseFloat(data.lastPrice),
       price_change_percent: parseFloat(data.priceChangePercent),
-      date: now.toISOString()
+      timestamp
     }
 
     console.log('💾 Guardando datos...')
@@ -74,7 +78,7 @@ async function runCron() {
       const { error: supabaseError, data } = await supabase
         .from('btc_hourly_data')
         .upsert(hourlyData, {
-          onConflict: 'timestamp,hour',
+          onConflict: 'date,hour',
           ignoreDuplicates: false
         })
 
