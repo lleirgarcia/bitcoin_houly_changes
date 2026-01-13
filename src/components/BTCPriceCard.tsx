@@ -4,10 +4,9 @@ import { formatPrice } from '../utils/formatNumber'
 interface BTCPriceCardProps {
   data: BinanceTickerResponse | null
   loading: boolean
-  lastFetch: Date | null
 }
 
-const BTCPriceCard = ({ data, loading, lastFetch }: BTCPriceCardProps) => {
+const BTCPriceCard = ({ data, loading }: BTCPriceCardProps) => {
   if (loading && !data) {
     return (
       <div className="bg-[#111111] border border-gray-800 rounded-lg p-6">

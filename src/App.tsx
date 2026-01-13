@@ -4,7 +4,7 @@ import BTCPriceCard from './components/BTCPriceCard'
 import HourlyGrid from './components/HourlyGrid'
 
 function App() {
-  const { currentData, loading, error, lastFetch, refetch } = useBinanceHourly()
+  const { currentData, loading, error, refetch } = useBinanceHourly()
   const [currentTime, setCurrentTime] = useState(new Date())
 
   useEffect(() => {
@@ -42,7 +42,7 @@ function App() {
         )}
 
         <div className="mb-8">
-          <BTCPriceCard data={currentData} loading={loading} lastFetch={lastFetch} />
+          <BTCPriceCard data={currentData} loading={loading} />
         </div>
 
         <div className="bg-[#111111] border border-gray-700 rounded-lg p-6">
