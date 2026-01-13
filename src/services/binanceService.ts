@@ -209,3 +209,79 @@ export const get24HourGrid = async (): Promise<Array<{ hour: number; changePerce
   
   return grid
 }
+
+export const getHourlyDataWithLatest = async (): Promise<Array<{ hour: number; price: number | null; priceYesterday: number | null; changePercent: number | null; latestPrice: number | null; latestTimestamp: number | null }>> => {
+  const stored = await getStoredHourlyData()
+  if (stored.length === 0) {
+    return Array.from({ length: 24 }, (_, i) => ({
+      hour: i,
+      price: null,
+      priceYesterday: null,
+      changePercent: null,
+      latestPrice: null,
+      latestTimestamp: null
+    }))
+  }
+
+  // Obtener fechas: hoy y ayer
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  const todayString = today.toISOString().split('T')[0]
+  
+  const yesterday = new Date(today)
+  yesterday.setDate(yesterday.getDate() - 1)
+  const yesterdayString = yesterday.toISOString().split('T')[0]
+  
+  // Agrupar datos por fecha y hora
+  const dataByDateAndHour = new Map<string, HourlyData[]>()
+  stored.forEach((data) => {
+    const dateStr = typeof data.date === 'string' ? data.date : new Date(data.date).toISOString().split('T')[0]
+    const key = `${dateStr}-${data.hour}`
+    if (!dataByDateAndHour.has(key)) {
+      dataByDateAndHour.set(key, [])
+    }
+    dataByDateAndHour.get(key)!.push({ ...data, date: dateStr })
+  })
+  
+  // Encontrar el dato más reciente de todos
+  const allData = stored.sort((a, b) => b.timestamp - a.timestamp)
+  const latestData = allData.length > 0 ? allData[0] : null
+  
+  // Crear grid de 24 horas (0-23)
+  const grid = Array.from({ length: 24 }, (_, i) => {
+    const hour = i
+    const todayKey = `${todayString}-${hour}`
+    const yesterdayKey = `${yesterdayString}-${hour}`
+    
+    const todayData = dataByDateAndHour.get(todayKey)
+    const yesterdayData = dataByDateAndHour.get(yesterdayKey)
+    
+    let price: number | null = null
+    let priceYesterday: number | null = null
+    let changePercent: number | null = null
+    
+    if (todayData && yesterdayData) {
+      // Calcular cambio porcentual comparando con el día anterior
+      price = todayData[0].price
+      priceYesterday = yesterdayData[0].price
+      changePercent = ((price - priceYesterday) / priceYesterday) * 100
+    } else if (todayData) {
+      // Solo hay dato de hoy
+      price = todayData[0].price
+    } else if (yesterdayData) {
+      // Solo hay dato de ayer
+      priceYesterday = yesterdayData[0].price
+    }
+    
+    return {
+      hour,
+      price,
+      priceYesterday,
+      changePercent,
+      latestPrice: latestData?.price || null,
+      latestTimestamp: latestData?.timestamp || null
+    }
+  })
+  
+  return grid
+}
