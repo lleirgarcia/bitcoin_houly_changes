@@ -6,8 +6,8 @@
 - **Estado**: ✅ Configurado
 - **Archivo**: `vercel.json`
 - **Ruta**: `/api/cron`
-- **Schedule**: `0 0 * * *` (una vez al día a medianoche UTC)
-- **Nota**: Plan Hobby solo permite cron jobs diarios
+- **Schedule**: `0 * * * *` (cada hora en el minuto 0)
+- **Nota**: Se ejecuta cada hora para capturar los datos de esa hora específica
 
 ### 2. Variables de Entorno en Vercel
 Todas las variables están configuradas:
@@ -50,8 +50,8 @@ Todas las variables están configuradas:
 ## 📅 Próxima Ejecución
 
 El cron job se ejecutará:
-- **Primera vez**: A medianoche UTC del día siguiente
-- **Frecuencia**: Una vez al día a las 00:00 UTC
+- **Frecuencia**: Cada hora en el minuto 0 (00:00, 01:00, 02:00, etc.)
+- **Ejemplo**: Si son las 14:30, se ejecutará a las 15:00
 
 ## 🧪 Prueba Manual
 
@@ -61,9 +61,11 @@ Para probar manualmente el cron job en Vercel:
 3. Ve a **Functions** → `/api/cron`
 4. Haz clic en "Invoke" o usa la URL directamente
 
-## ⚠️ Limitaciones del Plan Hobby
+## ⚠️ Notas sobre el Cron Job
 
-- Solo permite **1 cron job por día**
+- Se ejecuta cada hora para capturar los datos de esa hora específica
+- Guarda los datos con la fecha y hora actuales
+- Si el plan Hobby tiene limitaciones, considera actualizar a un plan superior
 - Si necesitas ejecutarlo cada hora, necesitas:
   - Actualizar al plan Pro de Vercel, O
   - Usar un servicio externo como cron-job.org
