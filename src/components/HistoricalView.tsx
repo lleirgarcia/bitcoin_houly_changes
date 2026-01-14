@@ -448,7 +448,6 @@ const HistoricalView = () => {
                       // Verde si >50% positivo, rojo si >50% negativo, gris si empate
                       const isPositive = trend.percentage > 50
                       const isNegative = trend.percentage < 50
-                      const isTie = trend.percentage === 50
                       
                       const bgColor = isPositive 
                         ? 'bg-green-900/30 text-green-400 border-green-700' 
