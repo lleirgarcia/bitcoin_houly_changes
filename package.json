@@ -9,6 +9,7 @@
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "preview": "vite preview",
     "cron": "tsx scripts/runCron.ts",
+    "cron:local": "tsx scripts/runCronLocal.ts",
     "create-table": "tsx scripts/createTable.ts",
     "populate-today": "tsx scripts/populateToday.ts",
     "populate-today-local": "tsx scripts/populateTodayLocal.ts"

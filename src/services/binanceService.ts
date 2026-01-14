@@ -276,12 +276,12 @@ export const getHistoricalDataByWeek = async (comparisonMode: ComparisonMode = '
       // Obtener horas del día
       const dayHours = dataByDate.get(dateStr) || []
       
-      // Obtener mes de la fecha
+      // Obtener mes de la fecha REAL del día (no del inicio de semana)
       const monthStr = `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, '0')}`
       
-      // Debug: verificar si es noviembre o diciembre
-      if (monthStr.includes('2025-11') || monthStr.includes('2025-12')) {
-        console.log('📅 Procesando fecha:', dateStr, '-> mes calculado:', monthStr, '-> año:', date.getUTCFullYear(), '-> mes (0-11):', date.getUTCMonth())
+      // Debug: verificar meses problemáticos
+      if (monthStr.includes('2025-06') || monthStr.includes('2025-11') || monthStr.includes('2025-12') || monthStr.includes('2026-01')) {
+        console.log('📅 Procesando fecha:', dateStr, '-> mes calculado:', monthStr, '-> año:', date.getUTCFullYear(), '-> mes (0-11):', date.getUTCMonth(), '-> semana inicio:', weekStartStr)
       }
       
       if (!months.has(monthStr)) {
@@ -341,6 +341,13 @@ export const getHistoricalDataByWeek = async (comparisonMode: ComparisonMode = '
         }
       })
 
+      // Validar que la fecha realmente pertenece al mes antes de agregarla
+      const dayMonthStr = `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, '0')}`
+      if (dayMonthStr !== monthStr) {
+        console.error(`❌ ERROR: Fecha ${dateStr} no pertenece al mes ${monthStr}, pertenece a ${dayMonthStr}`)
+        return // Saltar esta fecha
+      }
+      
       monthWeeks.get(weekStartStr)!.push({
         date: dateStr,
         hours: hoursWithChange.sort((a, b) => a.hour - b.hour)
@@ -350,6 +357,20 @@ export const getHistoricalDataByWeek = async (comparisonMode: ComparisonMode = '
     // Debug: mostrar qué meses se encontraron antes de convertir
     console.log('📅 Meses únicos encontrados (antes de convertir):', Array.from(months.keys()))
     
+    // Verificar días en cada mes antes de convertir
+    months.forEach((monthWeeks, monthStr) => {
+      const allDays = Array.from(monthWeeks.values()).flatMap(days => days.map(d => d.date))
+      const uniqueDays = [...new Set(allDays)]
+      const daysInOtherMonths = uniqueDays.filter(dayStr => {
+        const dayDate = new Date(dayStr + 'T00:00:00Z')
+        const dayMonthStr = `${dayDate.getUTCFullYear()}-${String(dayDate.getUTCMonth() + 1).padStart(2, '0')}`
+        return dayMonthStr !== monthStr
+      })
+      if (daysInOtherMonths.length > 0) {
+        console.warn(`⚠️ Mes ${monthStr} contiene días de otros meses:`, daysInOtherMonths)
+      }
+    })
+    
     // Convertir a array agrupado por mes
     const monthsArray = Array.from(months.entries()).map(([monthStr, monthWeeks]) => {
       const [year, month] = monthStr.split('-')
@@ -357,11 +378,16 @@ export const getHistoricalDataByWeek = async (comparisonMode: ComparisonMode = '
                          'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre']
       const monthLabel = `${monthNames[parseInt(month) - 1]} ${year}`
       
-      // Debug: verificar noviembre y diciembre
-      if (monthStr.includes('2025-11') || monthStr.includes('2025-12')) {
+      // Debug: verificar todos los meses problemáticos
+      if (monthStr.includes('2025-06') || monthStr.includes('2025-11') || monthStr.includes('2025-12') || monthStr.includes('2026-01')) {
+        const allDays = Array.from(monthWeeks.values()).flatMap(days => days.map(d => d.date))
+        const uniqueDays = [...new Set(allDays)].sort()
         console.log(`📅 Procesando mes ${monthStr} (${monthLabel}):`, {
           semanas: monthWeeks.size,
-          totalDias: Array.from(monthWeeks.values()).reduce((sum, days) => sum + days.length, 0)
+          totalDias: Array.from(monthWeeks.values()).reduce((sum, days) => sum + days.length, 0),
+          diasUnicos: uniqueDays.length,
+          primerasFechas: uniqueDays.slice(0, 5),
+          ultimasFechas: uniqueDays.slice(-5)
         })
       }
 
@@ -381,10 +407,24 @@ export const getHistoricalDataByWeek = async (comparisonMode: ComparisonMode = '
           }
         }
         
+        // Filtrar días que no pertenecen al mes correcto (puede pasar si una semana cruza meses)
+        const monthYear = parseInt(monthStr.split('-')[0])
+        const monthNum = parseInt(monthStr.split('-')[1])
+        const filteredDays = days.filter(day => {
+          const dayDate = new Date(day.date + 'T00:00:00Z')
+          const dayYear = dayDate.getUTCFullYear()
+          const dayMonth = dayDate.getUTCMonth() + 1
+          const belongsToMonth = dayYear === monthYear && dayMonth === monthNum
+          if (!belongsToMonth) {
+            console.warn(`⚠️ Filtrando día ${day.date} que no pertenece al mes ${monthStr}`)
+          }
+          return belongsToMonth
+        })
+        
         return {
           weekStart,
           weekEnd: weekEndStr,
-          days: days.sort((a, b) => b.date.localeCompare(a.date)) // Días más recientes primero
+          days: filteredDays.sort((a, b) => b.date.localeCompare(a.date)) // Días más recientes primero
         }
       }).sort((a, b) => b.weekStart.localeCompare(a.weekStart)) // Semanas más recientes primero
 
@@ -401,9 +441,18 @@ export const getHistoricalDataByWeek = async (comparisonMode: ComparisonMode = '
     
     // Debug: verificar días en cada mes
     monthsArray.forEach(m => {
-      if (m.month.includes('2025-11') || m.month.includes('2025-12')) {
+      if (m.month.includes('2025-06') || m.month.includes('2025-11') || m.month.includes('2025-12') || m.month.includes('2026-01')) {
         const allDays = m.weeks.flatMap(w => w.days.map(d => d.date))
-        const uniqueDays = [...new Set(allDays)]
+        const uniqueDays = [...new Set(allDays)].sort()
+        // Verificar que todos los días pertenecen al mes correcto
+        const wrongDays = uniqueDays.filter(dayStr => {
+          const dayDate = new Date(dayStr + 'T00:00:00Z')
+          const dayMonthStr = `${dayDate.getUTCFullYear()}-${String(dayDate.getUTCMonth() + 1).padStart(2, '0')}`
+          return dayMonthStr !== m.month
+        })
+        if (wrongDays.length > 0) {
+          console.error(`❌ ${m.monthLabel} contiene días incorrectos:`, wrongDays)
+        }
         console.log(`📅 ${m.monthLabel}: ${uniqueDays.length} días únicos, fechas:`, uniqueDays.slice(0, 5), '...', uniqueDays.slice(-5))
       }
     })

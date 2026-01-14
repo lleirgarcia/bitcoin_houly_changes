@@ -195,6 +195,322 @@ Operar en las horas con mayor volatilidad y mejor historial.
 
 ---
 
+## 🎯 Mecanismos de Decisión: ¿Entrar en Posición o No?
+
+### Sistema de Puntuación para Entrada (Score System)
+
+#### Concepto
+Asignar puntos a diferentes señales y solo entrar cuando se alcanza un umbral mínimo de confianza.
+
+#### Criterios de Puntuación
+
+**Filtros Básicos (Obligatorios - 0 puntos, pero deben cumplirse)**
+- ✅ Hora actual está en Top 3 horas positivas del mes: **REQUERIDO**
+- ✅ Día de la semana es laborable (lunes-viernes): **REQUERIDO**
+- ✅ Porcentaje total del día > -0.5%: **REQUERIDO**
+
+**Señales de Confirmación (Puntos)**
+1. **Hora en Top 3 del Mes** (+3 puntos)
+   - Si la hora actual está en las 3 mejores horas históricas
+
+2. **Momentum Positivo** (+2 puntos)
+   - Comparación con hora anterior: cambio positivo
+   - Comparación con hora anterior: cambio creciente (ej: +0.1% → +0.2% → +0.3%)
+
+3. **Mejor que Ayer** (+2 puntos)
+   - Hora actual mejor que misma hora ayer
+   - Diferencia > 0.3%: +1 punto adicional
+
+4. **Racha Negativa Previa** (+2 puntos)
+   - Si las 2-3 horas anteriores fueron negativas (posible rebote)
+
+5. **Día Positivo** (+1 punto)
+   - Porcentaje total del día > +0.5%
+
+6. **Volatilidad Adecuada** (+1 punto)
+   - Cambio actual entre 0.2% y 1.5% (ni muy bajo ni muy alto)
+
+7. **Tendencia del Día** (+1 punto)
+   - Más horas positivas que negativas en el día hasta ahora
+
+**Señales de Advertencia (Restan puntos)**
+- ❌ Día muy negativo (< -1%): **-3 puntos** (NO ENTRAR)
+- ❌ Racha de 4+ horas negativas: **-2 puntos**
+- ❌ Hora actual mucho peor que ayer (> -0.5% diferencia): **-2 puntos**
+- ❌ Volatilidad extrema (> 2% cambio en hora): **-1 punto**
+
+#### Umbrales de Decisión
+
+**ENTRADA AGRESIVA**: 8+ puntos
+- Entrar con posición completa
+- Take profit más amplio
+- Stop loss más holgado
+
+**ENTRADA MODERADA**: 5-7 puntos
+- Entrar con posición estándar
+- Take profit moderado
+- Stop loss estándar
+
+**ENTRADA CONSERVADORA**: 3-4 puntos
+- Entrar con posición reducida (50% del tamaño normal)
+- Take profit más cercano
+- Stop loss más ajustado
+
+**NO ENTRAR**: < 3 puntos o señales de advertencia críticas
+- Esperar mejor oportunidad
+- Monitorear para ver si mejora
+
+---
+
+### Sistema de Checklist Binario
+
+#### Concepto
+Lista de verificación simple: todas las condiciones deben cumplirse para entrar.
+
+#### Checklist de Entrada (TODAS deben ser ✅)
+
+**Condiciones de Mercado**
+- [ ] Hora actual en Top 3 horas positivas del mes
+- [ ] Porcentaje del día > -0.3%
+- [ ] Día de la semana: lunes a viernes
+
+**Condiciones de Momentum**
+- [ ] Cambio actual vs hora anterior: positivo
+- [ ] Cambio actual vs misma hora ayer: mejor o similar (diferencia < -0.2%)
+
+**Condiciones de Contexto**
+- [ ] No hay racha de 4+ horas negativas consecutivas
+- [ ] Volatilidad actual entre 0.1% y 2%
+- [ ] Al menos 2 de las últimas 3 horas fueron positivas o neutras
+
+**Condiciones de Gestión de Riesgo**
+- [ ] Stop loss definido (0.5-1% del precio)
+- [ ] Take profit definido (0.3-0.8% del precio)
+- [ ] Tamaño de posición calculado (< 5% del capital)
+
+**Si TODAS son ✅ → ENTRAR**
+**Si alguna es ❌ → NO ENTRAR**
+
+---
+
+### Sistema de Confirmación Múltiple
+
+#### Concepto
+Requiere que múltiples indicadores independientes confirmen la señal.
+
+#### Indicadores a Confirmar
+
+**1. Indicador de Tiempo (Time-based)**
+- ✅ Hora en Top 3 del mes
+- ✅ Día de la semana favorable
+
+**2. Indicador de Momentum (Momentum-based)**
+- ✅ Cambio positivo vs hora anterior
+- ✅ Cambio positivo vs misma hora ayer
+
+**3. Indicador de Contexto (Context-based)**
+- ✅ Día con balance positivo
+- ✅ No hay racha negativa extrema
+
+**4. Indicador de Volatilidad (Volatility-based)**
+- ✅ Volatilidad en rango normal
+- ✅ No hay movimientos extremos recientes
+
+#### Regla de Decisión
+- **ENTRAR**: Si 3 de 4 indicadores son positivos
+- **ENTRAR CONSERVADOR**: Si 2 de 4 indicadores son positivos
+- **NO ENTRAR**: Si menos de 2 indicadores son positivos
+
+---
+
+### Sistema de Probabilidad Estimada
+
+#### Concepto
+Calcular una probabilidad estimada de éxito basada en datos históricos.
+
+#### Factores de Probabilidad
+
+**Probabilidad Base (50%)**
+- Ajustar según condiciones actuales
+
+**Ajustes por Condiciones**
+- Hora en Top 3: +15%
+- Momentum positivo: +10%
+- Mejor que ayer: +10%
+- Día positivo: +5%
+- Racha negativa previa: +5%
+
+**Penalizaciones**
+- Día muy negativo: -20%
+- Racha extrema negativa: -15%
+- Volatilidad extrema: -10%
+
+#### Ejemplo de Cálculo
+```
+Probabilidad Base: 50%
++ Hora en Top 3: +15% = 65%
++ Momentum positivo: +10% = 75%
++ Mejor que ayer: +10% = 85%
++ Día positivo: +5% = 90%
+= Probabilidad Final: 90%
+```
+
+#### Umbrales de Acción
+- **> 75%**: Entrada agresiva
+- **65-75%**: Entrada moderada
+- **55-65%**: Entrada conservadora
+- **< 55%**: No entrar
+
+---
+
+### Sistema de Filtros en Cascada
+
+#### Concepto
+Aplicar filtros secuenciales, eliminando oportunidades que no pasan cada nivel.
+
+#### Niveles de Filtrado
+
+**Nivel 1: Filtro de Tiempo** (Elimina 30-40% de oportunidades)
+- ✅ Hora en Top 3 del mes
+- ✅ Día laborable
+- ❌ Si no pasa → NO ENTRAR
+
+**Nivel 2: Filtro de Contexto** (Elimina 20-30% de las restantes)
+- ✅ Porcentaje del día > -0.5%
+- ✅ No hay racha extrema negativa
+- ❌ Si no pasa → NO ENTRAR
+
+**Nivel 3: Filtro de Momentum** (Elimina 15-25% de las restantes)
+- ✅ Cambio positivo vs hora anterior
+- ✅ Cambio mejor o similar vs ayer
+- ❌ Si no pasa → NO ENTRAR
+
+**Nivel 4: Filtro de Confirmación** (Elimina 10-15% de las restantes)
+- ✅ Al menos 2 de las últimas 3 horas positivas
+- ✅ Volatilidad en rango normal
+- ❌ Si no pasa → NO ENTRAR
+
+**Nivel 5: Decisión Final**
+- ✅ Si pasa todos los filtros → ENTRAR
+- ✅ Calcular tamaño de posición según fuerza de señales
+
+---
+
+### Sistema de Señales de Alta Confianza
+
+#### Concepto
+Identificar situaciones específicas con alta probabilidad histórica de éxito.
+
+#### Patrones de Alta Confianza
+
+**Patrón 1: "La Hora Perfecta"**
+- ✅ Hora actual en Top 3 del mes
+- ✅ Cambio positivo vs hora anterior
+- ✅ Cambio positivo vs misma hora ayer
+- ✅ Día con balance positivo
+- **Probabilidad estimada**: 70-80%
+- **Acción**: Entrada estándar
+
+**Patrón 2: "Rebote Después de Caída"**
+- ✅ 2-3 horas anteriores negativas
+- ✅ Hora actual en Top 3 del mes
+- ✅ Cambio positivo vs hora anterior
+- ✅ Día no extremadamente negativo (> -1%)
+- **Probabilidad estimada**: 65-75%
+- **Acción**: Entrada moderada
+
+**Patrón 3: "Momentum Acelerado"**
+- ✅ 3 horas consecutivas con cambios positivos crecientes
+- ✅ Hora actual en Top 3 del mes
+- ✅ Mejor que misma hora ayer
+- **Probabilidad estimada**: 70-80%
+- **Acción**: Entrada estándar
+
+**Patrón 4: "Día Fuerte, Hora Fuerte"**
+- ✅ Día con porcentaje > +1%
+- ✅ Hora actual en Top 3 del mes
+- ✅ Cambio positivo actual
+- **Probabilidad estimada**: 75-85%
+- **Acción**: Entrada agresiva (posible mantener más tiempo)
+
+---
+
+### Sistema de Exclusión Automática
+
+#### Concepto
+Lista de condiciones que automáticamente descartan una entrada, sin importar otras señales.
+
+#### Condiciones de Exclusión Automática
+
+**NO ENTRAR SI:**
+- ❌ Porcentaje del día < -1.5%
+- ❌ Racha de 5+ horas negativas consecutivas
+- ❌ Volatilidad extrema (> 3% en una hora)
+- ❌ Fin de semana (sábado o domingo)
+- ❌ Hora actual no está en Top 5 horas del mes
+- ❌ Cambio actual vs ayer < -1% (muy peor)
+- ❌ Ya hay una posición abierta y no se permite múltiples
+- ❌ Stop loss no puede ser colocado (riesgo técnico)
+
+**Regla de Oro**: Si alguna condición de exclusión se cumple, NO ENTRAR, sin excepciones.
+
+---
+
+### Recomendación de Implementación
+
+#### Para Principiantes
+- **Usar**: Sistema de Checklist Binario
+- **Ventaja**: Simple, claro, reduce errores emocionales
+- **Implementación**: Crear lista visual en la UI
+
+#### Para Intermedios
+- **Usar**: Sistema de Puntuación + Filtros en Cascada
+- **Ventaja**: Balance entre simplicidad y sofisticación
+- **Implementación**: Calculadora automática en el código
+
+#### Para Avanzados
+- **Usar**: Sistema de Probabilidad + Señales de Alta Confianza
+- **Ventaja**: Máxima precisión, basado en datos históricos
+- **Implementación**: Algoritmo ML o estadístico avanzado
+
+---
+
+### Ejemplo Práctico de Decisión
+
+**Situación Actual:**
+- Hora: 15:00 (está en Top 3 del mes)
+- Cambio vs hora anterior: +0.25%
+- Cambio vs misma hora ayer: +0.40%
+- Porcentaje del día: +0.8%
+- Últimas 3 horas: +0.1%, +0.15%, +0.25%
+- Día de la semana: Miércoles
+
+**Aplicando Sistema de Puntuación:**
+- Hora en Top 3: +3 puntos
+- Momentum positivo: +2 puntos
+- Mejor que ayer: +3 puntos (diferencia > 0.3%)
+- Día positivo: +1 punto
+- Tendencia del día: +1 punto
+- **Total: 10 puntos**
+
+**Decisión**: ENTRADA AGRESIVA (8+ puntos)
+- Tamaño de posición: Completo
+- Take profit: 0.6-0.8%
+- Stop loss: 0.8-1%
+
+---
+
+### Notas Importantes
+
+1. **Ningún sistema es perfecto**: Todos tienen falsos positivos y negativos
+2. **Backtesting es esencial**: Probar cada sistema con datos históricos
+3. **Ajuste continuo**: Los mercados cambian, los sistemas deben adaptarse
+4. **Gestión de riesgo primero**: Nunca entrar sin stop loss definido
+5. **Emociones fuera**: Los sistemas eliminan decisiones emocionales
+6. **Documentar todo**: Registrar cada decisión y resultado para mejorar
+
+---
+
 ## ⚠️ Gestión de Riesgo
 
 ### Stop Loss Recomendado

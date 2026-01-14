@@ -1,8 +1,8 @@
 /**
- * Script para obtener datos históricos de noviembre y diciembre 2025
+ * Script para obtener datos históricos de junio 2025
  * Uso: npx tsx scripts/fetchNovemberDecember2025.ts
  * 
- * Este script obtiene los datos de cada día de noviembre y diciembre 2025
+ * Este script obtiene los datos de cada día de junio 2025
  * y genera archivos SQL para insertarlos en Supabase
  */
 
@@ -113,64 +113,31 @@ function generateSQLForMonth(monthData: Map<string, KlineData[]>, monthName: str
 
 async function fetchNovemberDecember2025() {
   try {
-    console.log('📡 Obteniendo datos históricos de noviembre y diciembre 2025...\n')
+    console.log('📡 Obteniendo datos históricos de junio 2025...\n')
 
     const year = 2025
-    const novemberData = new Map<string, KlineData[]>()
-    const decemberData = new Map<string, KlineData[]>()
+    const juneData = new Map<string, KlineData[]>()
 
-    // Procesar noviembre (días 1-30)
-    console.log('📅 Procesando NOVIEMBRE 2025...')
+    // Procesar junio (días 1-30)
+    console.log('📅 Procesando JUNIO 2025...')
     console.log('='.repeat(60))
     
     for (let day = 1; day <= 30; day++) {
-      const dateString = `${year}-11-${String(day).padStart(2, '0')}`
-      console.log(`\n📆 Día ${day}/11/2025 (${dateString})`)
+      const dateString = `${year}-06-${String(day).padStart(2, '0')}`
+      console.log(`\n📆 Día ${day}/06/2025 (${dateString})`)
       
       try {
-        const dayData = await fetchDayData(year, 11, day)
+        const dayData = await fetchDayData(year, 6, day)
         
         if (dayData.length > 0) {
           console.log(`   ✅ Obtenidas ${dayData.length} horas`)
           
           // Agrupar por fecha
           dayData.forEach(item => {
-            if (!novemberData.has(item.date)) {
-              novemberData.set(item.date, [])
+            if (!juneData.has(item.date)) {
+              juneData.set(item.date, [])
             }
-            novemberData.get(item.date)!.push(item)
-          })
-        } else {
-          console.log(`   ⚠️  No hay datos disponibles`)
-        }
-        
-        // Pausa para no sobrecargar la API
-        await new Promise(resolve => setTimeout(resolve, 500))
-      } catch (error) {
-        console.error(`   ❌ Error: ${error}`)
-      }
-    }
-
-    // Procesar diciembre (días 1-31)
-    console.log('\n\n📅 Procesando DICIEMBRE 2025...')
-    console.log('='.repeat(60))
-    
-    for (let day = 1; day <= 31; day++) {
-      const dateString = `${year}-12-${String(day).padStart(2, '0')}`
-      console.log(`\n📆 Día ${day}/12/2025 (${dateString})`)
-      
-      try {
-        const dayData = await fetchDayData(year, 12, day)
-        
-        if (dayData.length > 0) {
-          console.log(`   ✅ Obtenidas ${dayData.length} horas`)
-          
-          // Agrupar por fecha
-          dayData.forEach(item => {
-            if (!decemberData.has(item.date)) {
-              decemberData.set(item.date, [])
-            }
-            decemberData.get(item.date)!.push(item)
+            juneData.get(item.date)!.push(item)
           })
         } else {
           console.log(`   ⚠️  No hay datos disponibles`)
@@ -195,38 +162,15 @@ async function fetchNovemberDecember2025() {
       // El directorio ya existe, no hay problema
     }
 
-    // Generar SQL para noviembre
-    if (novemberData.size > 0) {
-      const novemberSQL = generateSQLForMonth(novemberData, 'Noviembre')
-      const novemberFile = resolve(supabaseDir, 'insert_november_2025.sql')
-      writeFileSync(novemberFile, novemberSQL, 'utf-8')
-      console.log(`\n✅ Archivo SQL de noviembre generado: ${novemberFile}`)
-      console.log(`   - Fechas: ${novemberData.size}`)
-      const totalHours = Array.from(novemberData.values()).reduce((sum, arr) => sum + arr.length, 0)
+    // Generar SQL para junio
+    if (juneData.size > 0) {
+      const juneSQL = generateSQLForMonth(juneData, 'Junio')
+      const juneFile = resolve(supabaseDir, 'insert_june_2025.sql')
+      writeFileSync(juneFile, juneSQL, 'utf-8')
+      console.log(`\n✅ Archivo SQL de junio generado: ${juneFile}`)
+      console.log(`   - Fechas: ${juneData.size}`)
+      const totalHours = Array.from(juneData.values()).reduce((sum, arr) => sum + arr.length, 0)
       console.log(`   - Total horas: ${totalHours}`)
-    }
-
-    // Generar SQL para diciembre
-    if (decemberData.size > 0) {
-      const decemberSQL = generateSQLForMonth(decemberData, 'Diciembre')
-      const decemberFile = resolve(supabaseDir, 'insert_december_2025.sql')
-      writeFileSync(decemberFile, decemberSQL, 'utf-8')
-      console.log(`\n✅ Archivo SQL de diciembre generado: ${decemberFile}`)
-      console.log(`   - Fechas: ${decemberData.size}`)
-      const totalHours = Array.from(decemberData.values()).reduce((sum, arr) => sum + arr.length, 0)
-      console.log(`   - Total horas: ${totalHours}`)
-    }
-
-    // Generar archivo combinado
-    if (novemberData.size > 0 || decemberData.size > 0) {
-      const allData = new Map<string, KlineData[]>()
-      novemberData.forEach((value, key) => allData.set(key, value))
-      decemberData.forEach((value, key) => allData.set(key, value))
-      
-      const combinedSQL = generateSQLForMonth(allData, 'Noviembre y Diciembre')
-      const combinedFile = resolve(supabaseDir, 'insert_november_december_2025.sql')
-      writeFileSync(combinedFile, combinedSQL, 'utf-8')
-      console.log(`\n✅ Archivo SQL combinado generado: ${combinedFile}`)
     }
 
     console.log('\n' + '='.repeat(60))

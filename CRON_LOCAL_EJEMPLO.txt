@@ -1,0 +1,30 @@
+# Ejemplo de configuración de crontab para este proyecto
+# 
+# IMPORTANTE: El script captura los datos de la hora actual cada vez que se ejecuta.
+# Debe ejecutarse cada hora para capturar todas las horas del día.
+#
+# Para usar este archivo:
+# 1. Copia la línea que necesites
+# 2. Ejecuta: crontab -e
+# 3. Pega la línea
+# 4. Guarda y sale
+
+# Ejecutar cada hora en el minuto 0 (00:00, 01:00, 02:00, etc.)
+# Cada ejecución capturará los datos de esa hora específica
+# Usando npm (recomendado)
+0 * * * * cd /Users/lleirgarcia/github_projects/trading_X && npm run cron:local >> /tmp/cron-trading-x.log 2>&1
+
+# Ejecutar cada hora usando el script shell wrapper
+0 * * * * /Users/lleirgarcia/github_projects/trading_X/scripts/runCronLocal.sh >> /tmp/cron-trading-x.log 2>&1
+
+# Ejecutar cada hora usando tsx directamente (necesitas ajustar la ruta de node)
+0 * * * * cd /Users/lleirgarcia/github_projects/trading_X && /usr/local/bin/node $(which tsx) scripts/runCronLocal.ts >> /tmp/cron-trading-x.log 2>&1
+
+# Ejecutar cada 2 horas
+0 */2 * * * cd /Users/lleirgarcia/github_projects/trading_X && npm run cron:local >> /tmp/cron-trading-x.log 2>&1
+
+# Ejecutar una vez al día a medianoche
+0 0 * * * cd /Users/lleirgarcia/github_projects/trading_X && npm run cron:local >> /tmp/cron-trading-x.log 2>&1
+
+# Ejecutar cada 30 minutos
+*/30 * * * * cd /Users/lleirgarcia/github_projects/trading_X && npm run cron:local >> /tmp/cron-trading-x.log 2>&1

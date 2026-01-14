@@ -144,6 +144,53 @@ const HistoricalView = () => {
     }
   }
 
+  // Calcular porcentaje positivo/negativo por hora para el mes
+  const calculateHourTrends = (month: MonthData) => {
+    // Obtener todos los días del mes excluyendo fines de semana
+    const weekdays = month.weeks.flatMap(week => 
+      week.days.filter(day => !isWeekend(day.date))
+    )
+
+    // Agrupar cambios por hora (0-23)
+    const hoursData = new Map<number, number[]>()
+    
+    weekdays.forEach(day => {
+      day.hours.forEach(hourData => {
+        if (hourData.changePercent !== null) {
+          if (!hoursData.has(hourData.hour)) {
+            hoursData.set(hourData.hour, [])
+          }
+          hoursData.get(hourData.hour)!.push(hourData.changePercent)
+        }
+      })
+    })
+
+    // Calcular porcentaje positivo para cada hora
+    const hourTrends = new Map<number, { positive: number; negative: number; total: number; percentage: number }>()
+    
+    for (let hour = 0; hour < 24; hour++) {
+      const changes = hoursData.get(hour) || []
+      if (changes.length === 0) {
+        hourTrends.set(hour, { positive: 0, negative: 0, total: 0, percentage: 0 })
+        continue
+      }
+
+      const positiveCount = changes.filter(c => c > 0).length
+      const negativeCount = changes.filter(c => c < 0).length
+      const totalCount = changes.length
+      const positivePercentage = (positiveCount / totalCount) * 100
+
+      hourTrends.set(hour, {
+        positive: positiveCount,
+        negative: negativeCount,
+        total: totalCount,
+        percentage: positivePercentage
+      })
+    }
+
+    return hourTrends
+  }
+
   // Calcular las 3 horas seguidas más positivas y negativas basadas en promedio del mes
   const calculateMonthStats = (month: MonthData) => {
     // Solo calcular si estamos en modo "previous_hour"
@@ -210,9 +257,54 @@ const HistoricalView = () => {
       .sort((a, b) => a.averageTotal - b.averageTotal)
       .slice(0, 3)
 
+    // Calcular horas consistentemente positivas y negativas (siempre se repiten)
+    // Una hora es "consistente" si tiene el mismo signo en >80% de los días
+    const consistentHours: {
+      positive: number[]
+      negative: number[]
+    } = {
+      positive: [],
+      negative: []
+    }
+
+    for (let hour = 0; hour < 24; hour++) {
+      const changes = hoursData.get(hour) || []
+      if (changes.length === 0) continue
+
+      const positiveCount = changes.filter(c => c > 0).length
+      const negativeCount = changes.filter(c => c < 0).length
+      const zeroCount = changes.filter(c => c === 0).length
+      const totalCount = changes.length
+      
+      const positivePercentage = (positiveCount / totalCount) * 100
+      const negativePercentage = (negativeCount / totalCount) * 100
+
+      // Debug: mostrar horas con datos significativos
+      if (totalCount >= 5) { // Solo mostrar si hay al menos 5 días de datos
+        console.log(`Hora ${hour.toString().padStart(2, '0')}:00 - Total: ${totalCount}, Positivas: ${positiveCount} (${positivePercentage.toFixed(1)}%), Negativas: ${negativeCount} (${negativePercentage.toFixed(1)}%), Ceros: ${zeroCount}`)
+      }
+
+      // Si >=80% de las veces es positiva, es consistentemente positiva
+      if (positivePercentage >= 80) {
+        consistentHours.positive.push(hour)
+        console.log(`✅ Hora ${hour.toString().padStart(2, '0')}:00 es consistentemente POSITIVA (${positivePercentage.toFixed(1)}%)`)
+      }
+      
+      // Si >=80% de las veces es negativa, es consistentemente negativa
+      if (negativePercentage >= 80) {
+        consistentHours.negative.push(hour)
+        console.log(`❌ Hora ${hour.toString().padStart(2, '0')}:00 es consistentemente NEGATIVA (${negativePercentage.toFixed(1)}%)`)
+      }
+    }
+
+    // Debug: resumen final
+    console.log(`📊 Horas consistentemente positivas: [${consistentHours.positive.join(', ')}]`)
+    console.log(`📊 Horas consistentemente negativas: [${consistentHours.negative.join(', ')}]`)
+
     return {
       top3Positive,
-      top3Negative
+      top3Negative,
+      consistentHours
     }
   }
 
@@ -290,13 +382,18 @@ const HistoricalView = () => {
         [MONTHLY_DATA] :: Cambio porcentual según modo seleccionado
       </p>
 
-      <div className="space-y-4">
+      <div className="space-y-8">
         {months.map((month, monthIndex) => {
           const monthStats = calculateMonthStats(month)
           const isOpen = openMonth === month.month
           
           return (
-          <div key={monthIndex} className="bg-[#111111] border border-gray-700 rounded-lg overflow-hidden">
+          <div key={monthIndex}>
+            {/* Separador visual entre meses */}
+            {monthIndex > 0 && (
+              <div className="mb-6 border-t border-gray-600"></div>
+            )}
+            <div className="bg-[#111111] border border-gray-700 rounded-lg overflow-hidden">
             {/* Header clickeable del mes */}
             <button
               type="button"
@@ -324,59 +421,116 @@ const HistoricalView = () => {
             {/* Contenido del mes (solo visible si está abierto) */}
             {isOpen && (
               <div className="px-6 pb-6">
+                {/* Línea de tendencias por hora - muestra qué horas suelen ser positivas/negativas */}
+                <div className="mb-6">
+                  <div className="text-xs text-gray-400 font-mono mb-2">TENDENCIAS POR HORA (positivas/negativas en el mes)</div>
+                  <div className="flex gap-1">
+                    {Array.from({ length: 24 }, (_, i) => {
+                      const hour = i
+                      const hourTrends = calculateHourTrends(month)
+                      const trend = hourTrends.get(hour)
+                      
+                      if (!trend || trend.total === 0) {
+                        return (
+                          <div
+                            key={hour}
+                            className="w-10 px-1.5 py-2 rounded border text-center text-xs font-mono bg-[#0a0a0a] text-gray-500 border-gray-700 flex-shrink-0"
+                            title={`Hora ${hour.toString().padStart(2, '0')}:00 - Sin datos`}
+                          >
+                            <div className="text-[9px] text-gray-500 mb-0.5">
+                              {hour.toString().padStart(2, '0')}
+                            </div>
+                            <div className="text-[10px]">—</div>
+                          </div>
+                        )
+                      }
+                      
+                      // Verde si >50% positivo, rojo si >50% negativo, gris si empate
+                      const isPositive = trend.percentage > 50
+                      const isNegative = trend.percentage < 50
+                      const isTie = trend.percentage === 50
+                      
+                      const bgColor = isPositive 
+                        ? 'bg-green-900/30 text-green-400 border-green-700' 
+                        : isNegative 
+                        ? 'bg-red-900/30 text-red-400 border-red-700'
+                        : 'bg-gray-800 text-gray-400 border-gray-700'
+                      
+                      return (
+                        <div
+                          key={hour}
+                          className={`w-10 px-1.5 py-2 rounded border text-center text-xs font-mono flex-shrink-0 ${bgColor}`}
+                          title={`Hora ${hour.toString().padStart(2, '0')}:00 - ${trend.positive} positivas (${trend.percentage.toFixed(1)}%), ${trend.negative} negativas, ${trend.total} total`}
+                        >
+                          <div className="text-[9px] text-gray-400 mb-0.5">
+                            {hour.toString().padStart(2, '0')}
+                          </div>
+                          <div className="text-[10px] font-bold">
+                            {isPositive ? '+' : isNegative ? '−' : '='}
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+                
                 {/* High Stats del Mes - Solo para modo previous_hour */}
                 {comparisonMode === 'previous_hour' && monthStats && (
-              <div className="mb-8 bg-[#0a0a0a] border border-gray-800 rounded-lg p-6">
-                <h3 className="text-lg font-semibold text-gray-200 mb-4 font-['Orbitron'] tracking-wider">
-                  📊 TOP 3 HORAS SEGUIDAS (Días Laborables)
-                </h3>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {/* Top 3 Horas Seguidas Más Positivas */}
-                  <div className="bg-green-900/10 border border-green-700/30 rounded-lg p-4">
-                    <h4 className="text-sm font-semibold text-green-400 mb-3 font-mono">
-                      🟢 TOP 3 HORAS SEGUIDAS MÁS POSITIVAS
-                    </h4>
+              <div className="mb-6 space-y-4">
+                {/* Top 3 Horas Seguidas */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <div className="text-xs text-gray-400 font-mono mb-2">TOP 3 POSITIVAS</div>
                     {monthStats.top3Positive.length > 0 ? (
-                      <div className="space-y-2">
+                      <div className="space-y-1">
                         {monthStats.top3Positive.map((item, idx) => (
-                          <div key={idx} className="bg-[#0a0a0a] border border-green-700/30 rounded p-3">
-                            <div className="text-xs font-mono text-gray-400 mb-1">#{idx + 1}</div>
-                            <div className="text-base font-bold text-green-400 font-mono">
-                              De {item.startHour.toString().padStart(2, '0')}:00 a {item.endHour.toString().padStart(2, '0')}:00
-                            </div>
-                            <div className="text-xs font-mono text-green-400 mt-1">
-                              Promedio: {formatChange(item.averageTotal)}
-                            </div>
+                          <div key={idx} className="text-sm font-mono text-green-400">
+                            {item.startHour.toString().padStart(2, '0')}-{item.endHour.toString().padStart(2, '0')} {formatChange(item.averageTotal)}
                           </div>
                         ))}
                       </div>
                     ) : (
-                      <div className="text-xs text-gray-500 font-mono">No hay datos positivos</div>
+                      <div className="text-xs text-gray-500 font-mono">—</div>
                     )}
                   </div>
-
-                  {/* Top 3 Horas Seguidas Más Negativas */}
-                  <div className="bg-red-900/10 border border-red-700/30 rounded-lg p-4">
-                    <h4 className="text-sm font-semibold text-red-400 mb-3 font-mono">
-                      🔴 TOP 3 HORAS SEGUIDAS MÁS NEGATIVAS
-                    </h4>
+                  
+                  <div>
+                    <div className="text-xs text-gray-400 font-mono mb-2">TOP 3 NEGATIVAS</div>
                     {monthStats.top3Negative.length > 0 ? (
-                      <div className="space-y-2">
+                      <div className="space-y-1">
                         {monthStats.top3Negative.map((item, idx) => (
-                          <div key={idx} className="bg-[#0a0a0a] border border-red-700/30 rounded p-3">
-                            <div className="text-xs font-mono text-gray-400 mb-1">#{idx + 1}</div>
-                            <div className="text-base font-bold text-red-400 font-mono">
-                              De {item.startHour.toString().padStart(2, '0')}:00 a {item.endHour.toString().padStart(2, '0')}:00
-                            </div>
-                            <div className="text-xs font-mono text-red-400 mt-1">
-                              Promedio: {formatChange(item.averageTotal)}
-                            </div>
+                          <div key={idx} className="text-sm font-mono text-red-400">
+                            {item.startHour.toString().padStart(2, '0')}-{item.endHour.toString().padStart(2, '0')} {formatChange(item.averageTotal)}
                           </div>
                         ))}
                       </div>
                     ) : (
-                      <div className="text-xs text-gray-500 font-mono">No hay datos negativos</div>
+                      <div className="text-xs text-gray-500 font-mono">—</div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Horas Consistentes */}
+                <div className="grid grid-cols-2 gap-4 pt-2 border-t border-gray-700">
+                  <div>
+                    <div className="text-xs text-gray-400 font-mono mb-2">HORAS SIEMPRE +</div>
+                    {monthStats.consistentHours.positive.length > 0 ? (
+                      <div className="text-sm font-mono text-green-400">
+                        {monthStats.consistentHours.positive.map(h => h.toString().padStart(2, '0')).join(', ')}
+                      </div>
+                    ) : (
+                      <div className="text-xs text-gray-500 font-mono">—</div>
+                    )}
+                  </div>
+                  
+                  <div>
+                    <div className="text-xs text-gray-400 font-mono mb-2">HORAS SIEMPRE -</div>
+                    {monthStats.consistentHours.negative.length > 0 ? (
+                      <div className="text-sm font-mono text-red-400">
+                        {monthStats.consistentHours.negative.map(h => h.toString().padStart(2, '0')).join(', ')}
+                      </div>
+                    ) : (
+                      <div className="text-xs text-gray-500 font-mono">—</div>
                     )}
                   </div>
                 </div>
@@ -395,151 +549,147 @@ const HistoricalView = () => {
                       const stats = calculateDayStats(day)
                       const isWeekendDay = isWeekend(day.date)
                       
+                      // Calcular movimiento del día actual vs día anterior
+                      // Usar el precio de la hora 0 del día actual
+                      const currentDayHour0 = day.hours.find(h => h.hour === 0)
+                      const currentDayPrice = currentDayHour0?.price ?? null
+                      
+                      // Buscar día anterior
+                      let previousDayPrice: number | null = null
+                      let dayMovement: number | null = null
+                      
+                      // Buscar en la misma semana primero
+                      if (dayIndex > 0) {
+                        const prevDay = week.days[dayIndex - 1]
+                        // Usar la hora 0 del día anterior, o si no existe, la hora 23
+                        const prevDayHour0 = prevDay.hours.find(h => h.hour === 0)
+                        const prevDayHour23 = prevDay.hours.find(h => h.hour === 23)
+                        previousDayPrice = prevDayHour0?.price ?? prevDayHour23?.price ?? null
+                      } else {
+                        // Si es el primer día de la semana, buscar en todas las semanas del mes
+                        const prevDate = new Date(day.date + 'T00:00:00Z')
+                        prevDate.setUTCDate(prevDate.getUTCDate() - 1)
+                        const prevDateStr = `${prevDate.getUTCFullYear()}-${String(prevDate.getUTCMonth() + 1).padStart(2, '0')}-${String(prevDate.getUTCDate()).padStart(2, '0')}`
+                        
+                        // Buscar en todas las semanas del mes
+                        const allDays = month.weeks.flatMap(w => w.days)
+                        const prevDay = allDays.find(d => d.date === prevDateStr)
+                        if (prevDay) {
+                          // Preferir hora 0, sino hora 23
+                          const prevDayHour0 = prevDay.hours.find(h => h.hour === 0)
+                          const prevDayHour23 = prevDay.hours.find(h => h.hour === 23)
+                          previousDayPrice = prevDayHour0?.price ?? prevDayHour23?.price ?? null
+                        }
+                      }
+                      
+                      // Calcular movimiento: diferencia entre precio hora 0 del día actual vs precio hora 0 (o 23) del día anterior
+                      if (currentDayPrice !== null && previousDayPrice !== null) {
+                        dayMovement = ((currentDayPrice - previousDayPrice) / previousDayPrice) * 100
+                      }
+                      
                       return (
                         <div key={dayIndex} className="border-b border-gray-700 pb-4 last:border-b-0 last:pb-0">
-                          {/* Fecha y label de fin de semana arriba */}
-                          <div className="flex items-center gap-2 mb-3">
-                            <div className="text-sm font-medium text-gray-300 font-mono">
+                          {/* Todo en una sola línea: Día → Estadísticas → Movimiento → Total → Weekend → Cuadrados */}
+                          <div className="flex items-center gap-3 flex-wrap">
+                            {/* Día */}
+                            <div className="text-sm font-medium text-gray-300 font-mono flex-shrink-0">
                               {formatDate(day.date)}
                             </div>
+                            
+                            {/* Estadísticas */}
+                            <div className="flex items-center gap-3 text-xs font-mono flex-shrink-0">
+                              <span className="text-green-400" title="Porcentaje de horas con cambio positivo">
+                                +{stats.positivePercentage.toFixed(1)}% pos
+                              </span>
+                              {stats.maxGainHour !== null && (
+                                <span className="text-green-400" title="Hora con máxima ganancia">
+                                  Max: {stats.maxGainHour.toString().padStart(2, '0')}:00 ({formatChange(stats.maxGainValue)})
+                                </span>
+                              )}
+                              {stats.maxPositiveStreak > 0 && (
+                                <span className="text-green-400" title="Máximo de horas consecutivas positivas">
+                                  {stats.maxPositiveStreak}h+ seg
+                                </span>
+                              )}
+                              {stats.maxNegativeStreak > 0 && (
+                                <span className="text-red-400" title="Máximo de horas consecutivas negativas">
+                                  {stats.maxNegativeStreak}h- seg
+                                </span>
+                              )}
+                              <span className="text-green-400" title="Suma total de cambios positivos">
+                                Total +: {stats.totalPositive.toFixed(2)}%
+                              </span>
+                              <span className="text-red-400" title="Suma total de cambios negativos">
+                                Total -: {stats.totalNegative.toFixed(2)}%
+                              </span>
+                            </div>
+                            
+                            {/* Movimiento del día vs día anterior */}
+                            {dayMovement !== null && (
+                              <div className={`text-sm font-bold font-mono flex-shrink-0 ${
+                                dayMovement > 0 ? 'text-green-400' : dayMovement < 0 ? 'text-red-400' : 'text-gray-400'
+                              }`} title="Movimiento del día actual vs día anterior (precio hora 0)">
+                                Día: {formatChange(dayMovement)}
+                              </div>
+                            )}
+                            
+                            {/* Total del día */}
                             {stats.totalDayPercent !== null && stats.totalDayPercent !== 0 && (
-                              <div className={`text-sm font-bold font-mono ${
+                              <div className={`text-sm font-bold font-mono flex-shrink-0 ${
                                 stats.totalDayPercent > 0 ? 'text-green-400' : 'text-red-400'
                               }`}>
                                 {formatChange(stats.totalDayPercent)}
                               </div>
                             )}
+                            
+                            {/* Weekend label */}
                             {isWeekendDay && (
-                              <span className="px-2 py-1 bg-yellow-900/30 border border-yellow-700/50 rounded text-xs font-mono text-yellow-400" title="Día de fin de semana (sábado o domingo)">
+                              <span className="px-2 py-1 bg-yellow-900/30 border border-yellow-700/50 rounded text-xs font-mono text-yellow-400 flex-shrink-0" title="Día de fin de semana (sábado o domingo)">
                                 WEEKEND
                               </span>
                             )}
-                          </div>
-                          
-                          {/* Recuadros de horas y estadísticas en la misma fila */}
-                          <div className="flex items-start gap-6">
-                            {/* Recuadros compactos en 2 líneas (12 horas por línea) */}
-                            <div className="space-y-1.5 flex-shrink-0">
-                            {/* Primera línea: horas 0-11 */}
-                            <div className="flex flex-wrap gap-1.5">
-                              {Array.from({ length: 12 }, (_, i) => {
-                                const hour = i
-                                const hourData = day.hours.find(h => h.hour === hour)
-                                const change = hourData?.changePercent ?? null
-                                const priceToday = hourData?.price ?? null
-                                const priceYesterday = hourData?.priceYesterday ?? null
-                                
-                                return (
-                                  <div
-                                    key={hour}
-                                    className={`w-12 px-2 py-1.5 rounded border text-center text-xs font-mono transition-all hover:scale-110 relative group ${getChangeColor(change)}`}
-                                  >
-                                    <div className="text-[10px] text-gray-400 mb-0.5">
-                                      {hour.toString().padStart(2, '0')}
-                                    </div>
-                                    <div className="text-xs font-bold">
-                                      {formatChange(change)}
-                                    </div>
-                                    
-                                    {/* Tooltip con precios en hover */}
-                                    {priceToday !== null && (
-                                      <div className="absolute left-1/2 transform -translate-x-1/2 bottom-full mb-2 hidden group-hover:block z-10 bg-[#1a1a1a] border border-gray-600 rounded p-2 text-xs font-mono whitespace-nowrap shadow-lg">
-                                        <div className="text-gray-300 mb-1">Hora {hour.toString().padStart(2, '0')}:00</div>
-                                        {priceYesterday !== null ? (
-                                          <>
-                                            <div className="text-gray-400">Ayer: {formatPrice(priceYesterday, 0)}</div>
-                                            <div className="text-gray-200">Hoy: {formatPrice(priceToday, 0)}</div>
-                                            <div className={`mt-1 ${change !== null && change > 0 ? 'text-green-400' : change !== null && change < 0 ? 'text-red-400' : 'text-gray-400'}`}>
-                                              {formatChange(change)}
-                                            </div>
-                                          </>
-                                        ) : (
-                                          <div className="text-gray-200">Hoy: {formatPrice(priceToday, 0)}</div>
-                                        )}
-                                      </div>
-                                    )}
-                                  </div>
-                                )
-                              })}
-                            </div>
                             
-                            {/* Segunda línea: horas 12-23 */}
-                            <div className="flex flex-wrap gap-1.5">
-                              {Array.from({ length: 12 }, (_, i) => {
-                                const hour = i + 12
-                                const hourData = day.hours.find(h => h.hour === hour)
-                                const change = hourData?.changePercent ?? null
-                                const priceToday = hourData?.price ?? null
-                                const priceYesterday = hourData?.priceYesterday ?? null
-                                
-                                return (
-                                  <div
-                                    key={hour}
-                                    className={`w-12 px-2 py-1.5 rounded border text-center text-xs font-mono transition-all hover:scale-110 relative group ${getChangeColor(change)}`}
-                                  >
-                                    <div className="text-[10px] text-gray-400 mb-0.5">
-                                      {hour.toString().padStart(2, '0')}
-                                    </div>
-                                    <div className="text-xs font-bold">
-                                      {formatChange(change)}
-                                    </div>
-                                    
-                                    {/* Tooltip con precios en hover */}
-                                    {priceToday !== null && (
-                                      <div className="absolute left-1/2 transform -translate-x-1/2 bottom-full mb-2 hidden group-hover:block z-10 bg-[#1a1a1a] border border-gray-600 rounded p-2 text-xs font-mono whitespace-nowrap shadow-lg">
-                                        <div className="text-gray-300 mb-1">Hora {hour.toString().padStart(2, '0')}:00</div>
-                                        {priceYesterday !== null ? (
-                                          <>
-                                            <div className="text-gray-400">Ayer: {formatPrice(priceYesterday, 0)}</div>
-                                            <div className="text-gray-200">Hoy: {formatPrice(priceToday, 0)}</div>
-                                            <div className={`mt-1 ${change !== null && change > 0 ? 'text-green-400' : change !== null && change < 0 ? 'text-red-400' : 'text-gray-400'}`}>
-                                              {formatChange(change)}
-                                            </div>
-                                          </>
-                                        ) : (
-                                          <div className="text-gray-200">Hoy: {formatPrice(priceToday, 0)}</div>
-                                        )}
-                                      </div>
-                                    )}
-                                  </div>
-                                )
-                              })}
-                            </div>
-                            </div>
-                            
-                            {/* Estadísticas al lado, a la misma altura, en fila horizontal */}
-                            <div className="flex flex-col gap-2 text-xs font-mono pt-0.5">
-                              {/* Estadísticas principales en fila */}
-                              <div className="flex items-center gap-4 flex-wrap">
-                                <span className="text-green-400" title="Porcentaje de horas con cambio positivo sobre el total de horas con datos">
-                                  +{stats.positivePercentage.toFixed(1)}% pos
-                                </span>
-                                {stats.maxGainHour !== null && (
-                                  <span className="text-green-400" title="Hora con máxima ganancia (mayor cambio positivo)">
-                                    Max: {stats.maxGainHour.toString().padStart(2, '0')}:00 ({formatChange(stats.maxGainValue)})
-                                  </span>
-                                )}
-                                {stats.maxPositiveStreak > 0 && (
-                                  <span className="text-green-400" title="Máximo de horas consecutivas con cambio positivo">
-                                    {stats.maxPositiveStreak}h+ seg
-                                  </span>
-                                )}
-                                {stats.maxNegativeStreak > 0 && (
-                                  <span className="text-red-400" title="Máximo de horas consecutivas con cambio negativo">
-                                    {stats.maxNegativeStreak}h- seg
-                                  </span>
-                                )}
-                              </div>
+                            {/* Todos los cuadrados de horas */}
+                            <div className="flex gap-1 flex-shrink-0">
+                            {Array.from({ length: 24 }, (_, i) => {
+                              const hour = i
+                              const hourData = day.hours.find(h => h.hour === hour)
+                              const change = hourData?.changePercent ?? null
+                              const priceToday = hourData?.price ?? null
+                              const priceYesterday = hourData?.priceYesterday ?? null
                               
-                              {/* Totales en fila */}
-                              <div className="flex items-center gap-4">
-                                <span className="text-green-400" title="Suma total de todos los cambios positivos del día">
-                                  Total +: {stats.totalPositive.toFixed(2)}%
-                                </span>
-                                <span className="text-red-400" title="Suma total de todos los cambios negativos del día">
-                                  Total -: {stats.totalNegative.toFixed(2)}%
-                                </span>
-                              </div>
+                              return (
+                                <div
+                                  key={hour}
+                                  className={`w-10 px-1.5 py-1 rounded border text-center text-xs font-mono transition-all hover:scale-110 relative group flex-shrink-0 ${getChangeColor(change)}`}
+                                >
+                                  <div className="text-[9px] text-gray-400 mb-0.5">
+                                    {hour.toString().padStart(2, '0')}
+                                  </div>
+                                  <div className="text-[10px] font-bold leading-tight">
+                                    {formatChange(change)}
+                                  </div>
+                                  
+                                  {/* Tooltip con precios en hover */}
+                                  {priceToday !== null && (
+                                    <div className="absolute left-1/2 transform -translate-x-1/2 bottom-full mb-2 hidden group-hover:block z-10 bg-[#1a1a1a] border border-gray-600 rounded p-2 text-xs font-mono whitespace-nowrap shadow-lg">
+                                      <div className="text-gray-300 mb-1">Hora {hour.toString().padStart(2, '0')}:00</div>
+                                      {priceYesterday !== null ? (
+                                        <>
+                                          <div className="text-gray-400">Ayer: {formatPrice(priceYesterday, 0)}</div>
+                                          <div className="text-gray-200">Hoy: {formatPrice(priceToday, 0)}</div>
+                                          <div className={`mt-1 ${change !== null && change > 0 ? 'text-green-400' : change !== null && change < 0 ? 'text-red-400' : 'text-gray-400'}`}>
+                                            {formatChange(change)}
+                                          </div>
+                                        </>
+                                      ) : (
+                                        <div className="text-gray-200">Hoy: {formatPrice(priceToday, 0)}</div>
+                                      )}
+                                    </div>
+                                  )}
+                                </div>
+                              )
+                            })}
                             </div>
                           </div>
                         </div>
@@ -551,6 +701,7 @@ const HistoricalView = () => {
                 </div>
               </div>
             )}
+            </div>
           </div>
           )
         })}
