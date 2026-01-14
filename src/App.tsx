@@ -2,10 +2,14 @@ import { useState, useEffect } from 'react'
 import { useBinanceHourly } from './hooks/useBinanceHourly'
 import BTCPriceCard from './components/BTCPriceCard'
 import HourlyGrid from './components/HourlyGrid'
+import HistoricalView from './components/HistoricalView'
+
+type View = 'main' | 'historical'
 
 function App() {
   const { currentData, loading, error, refetch } = useBinanceHourly()
   const [currentTime, setCurrentTime] = useState(new Date())
+  const [currentView, setCurrentView] = useState<View>('main')
 
   useEffect(() => {
     // Actualizar el reloj cada segundo
@@ -17,10 +21,16 @@ function App() {
   }, [])
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a]">
-      <div className="container mx-auto px-4 py-8">
+    <div className="min-h-screen bg-[#0a0a0a] flex flex-col">
+      <div className="container mx-auto px-4 py-8 flex-grow">
         <header className="mb-8 border-b border-gray-600 pb-4">
-          <h1 className="text-5xl font-bold text-gray-100 mb-2 font-['Orbitron'] tracking-wider">
+          <h1 
+            onClick={(e) => {
+              e.preventDefault()
+              setCurrentView('main')
+            }}
+            className="text-5xl font-bold text-gray-100 mb-2 font-['Orbitron'] tracking-wider cursor-pointer hover:text-gray-200 transition-colors"
+          >
             TRADING_X
           </h1>
           <p className="text-gray-300 text-sm font-mono">
@@ -41,14 +51,40 @@ function App() {
           </div>
         )}
 
-        <div className="mb-8">
-          <BTCPriceCard data={currentData} loading={loading} />
-        </div>
+        {currentView === 'main' ? (
+          <>
+            <div className="mb-8">
+              <BTCPriceCard data={currentData} loading={loading} />
+            </div>
 
-        <div className="bg-[#111111] border border-gray-700 rounded-lg p-6">
-          <HourlyGrid />
-        </div>
+            <div className="bg-[#111111] border border-gray-700 rounded-lg p-6">
+              <HourlyGrid />
+            </div>
+          </>
+        ) : (
+          <div className="bg-[#111111] border border-gray-700 rounded-lg p-6">
+            <HistoricalView />
+          </div>
+        )}
       </div>
+
+      {/* Footer con navegación */}
+      <footer className="border-t border-gray-700 bg-[#0a0a0a] mt-auto">
+        <div className="container mx-auto px-4 py-4">
+          <nav className="flex justify-center">
+            <button
+              type="button"
+              onClick={(e) => {
+                e.preventDefault()
+                setCurrentView(currentView === 'main' ? 'historical' : 'main')
+              }}
+              className="text-gray-400 hover:text-gray-200 font-mono text-sm transition-all cursor-pointer"
+            >
+              + historico
+            </button>
+          </nav>
+        </div>
+      </footer>
     </div>
   )
 }

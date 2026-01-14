@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { get24HourGrid, getHourlyDataWithLatest } from '../services/binanceService'
+import { get24HourGrid, getHourlyDataWithLatest, ComparisonMode } from '../services/binanceService'
 import { formatPrice } from '../utils/formatNumber'
 
 type GridItem = {
@@ -22,6 +22,7 @@ const HourlyGrid = () => {
   const [hourlyData, setHourlyData] = useState<HourlyDataItem[]>([])
   const [loading, setLoading] = useState(true)
   const [viewMode, setViewMode] = useState<'comparison' | 'hourly'>('comparison')
+  const [comparisonMode, setComparisonMode] = useState<ComparisonMode>('hour_yesterday')
 
   useEffect(() => {
     let lastTimestamp: number | null = null
@@ -30,7 +31,7 @@ const HourlyGrid = () => {
       setLoading(true)
       try {
         const [comparisonData, hourlyDataResult] = await Promise.all([
-          get24HourGrid(),
+          get24HourGrid(comparisonMode),
           getHourlyDataWithLatest()
         ])
         console.log('📊 Datos cargados para el grid:', comparisonData.length, 'horas')
@@ -56,7 +57,7 @@ const HourlyGrid = () => {
     const interval = setInterval(async () => {
       try {
         const [, hourlyDataResult] = await Promise.all([
-          get24HourGrid(),
+          get24HourGrid(comparisonMode),
           getHourlyDataWithLatest()
         ])
         
@@ -66,7 +67,7 @@ const HourlyGrid = () => {
           console.log('🔄 Nuevos datos detectados, actualizando...')
           // Recargar todos los datos
           const [comparisonData, updatedHourlyData] = await Promise.all([
-            get24HourGrid(),
+            get24HourGrid(comparisonMode),
             getHourlyDataWithLatest()
           ])
           setGrid(comparisonData)
@@ -79,7 +80,7 @@ const HourlyGrid = () => {
     }, 60000) // Verificar cada 60 segundos
     
     return () => clearInterval(interval)
-  }, [])
+  }, [comparisonMode])
 
   const formatHour = (hour: number): string => {
     return `${hour.toString().padStart(2, '0')}:00`
@@ -231,15 +232,53 @@ const HourlyGrid = () => {
   return (
     <div className="w-full">
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-2xl font-semibold text-gray-100 font-['Orbitron'] tracking-wider">
-          24H GRID
-        </h2>
+        <div className="flex items-center gap-4">
+          <h2 className="text-2xl font-semibold text-gray-100 font-['Orbitron'] tracking-wider">
+            24H GRID
+          </h2>
+          {/* Botones cuadrados con labels */}
+          <div className="flex gap-2">
+            <button 
+              type="button"
+              onClick={(e) => {
+                e.preventDefault()
+                setComparisonMode('hour_yesterday')
+              }}
+              className={`px-4 py-2 border rounded text-xs font-mono transition-all ${
+                comparisonMode === 'hour_yesterday'
+                  ? 'bg-gray-700 border-gray-600 text-gray-100'
+                  : 'bg-gray-800 border-gray-700 text-gray-300 hover:bg-gray-700 hover:border-gray-600'
+              }`}
+            >
+              compare with hour yesterday
+            </button>
+            <button 
+              type="button"
+              onClick={(e) => {
+                e.preventDefault()
+                setComparisonMode('previous_hour')
+              }}
+              className={`px-4 py-2 border rounded text-xs font-mono transition-all ${
+                comparisonMode === 'previous_hour'
+                  ? 'bg-gray-700 border-gray-600 text-gray-100'
+                  : 'bg-gray-800 border-gray-700 text-gray-300 hover:bg-gray-700 hover:border-gray-600'
+              }`}
+            >
+              compare with previous hour
+            </button>
+          </div>
+        </div>
+        
         <div className="flex items-center gap-3">
           <span className={`text-xs font-mono ${viewMode === 'comparison' ? 'text-gray-100' : 'text-gray-500'}`}>
             COMPARISON
           </span>
           <button
-            onClick={() => setViewMode(viewMode === 'comparison' ? 'hourly' : 'comparison')}
+            type="button"
+            onClick={(e) => {
+              e.preventDefault()
+              setViewMode(viewMode === 'comparison' ? 'hourly' : 'comparison')
+            }}
             className={`relative inline-flex h-7 w-14 items-center rounded transition-colors ${
               viewMode === 'hourly' ? 'bg-green-600' : 'bg-gray-700'
             }`}

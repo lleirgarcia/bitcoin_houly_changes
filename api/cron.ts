@@ -1,7 +1,8 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { createSupabaseClient } from './lib/supabaseServer'
 
-const API_URL = 'https://api.binance.com/api/v3/ticker/24hr?symbol=BTCUSDT'
+// Endpoint de Binance para obtener velas históricas (klines) de 1 hora
+const KLINES_URL = 'https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=1h&limit=24'
 
 export default async function handler(
   request: VercelRequest,
@@ -14,55 +15,79 @@ export default async function handler(
   }
 
   try {
-    // Fetch datos de Binance
-    const res = await fetch(API_URL)
+    console.log('🔄 Ejecutando cron job para recoger datos de todas las horas del día...')
+    
+    // Obtener datos históricos de las últimas 24 horas (klines)
+    const res = await fetch(KLINES_URL)
     if (!res.ok) {
       throw new Error('Error al obtener datos de Binance')
     }
     
-    const data = await res.json()
+    const klines: any[][] = await res.json()
+    console.log(`✅ Obtenidas ${klines.length} velas de 1 hora`)
     
-    // Preparar datos para guardar
-    const now = new Date()
-    const hour = now.getHours()
-    const timestamp = now.getTime()
+    // Obtener fecha de hoy
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+    const todayString = today.toISOString().split('T')[0] // YYYY-MM-DD
     
-    // Obtener solo la fecha (sin hora) en formato YYYY-MM-DD
-    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
-    const dateString = today.toISOString().split('T')[0] // Formato: YYYY-MM-DD
-    
-    const hourlyData = {
-      date: dateString,
-      hour,
-      price: parseFloat(data.lastPrice),
-      price_change_percent: parseFloat(data.priceChangePercent),
-      timestamp
-    }
-
     // Guardar en Supabase
     const supabase = createSupabaseClient()
-    const { error: supabaseError } = await supabase
-      .from('btc_hourly_data')
-      .upsert(hourlyData, {
-        onConflict: 'date,hour',
-        ignoreDuplicates: false
-      })
-
-    if (supabaseError) {
-      console.error('Error saving to Supabase:', supabaseError)
-      return response.status(500).json({ 
-        error: 'Error al guardar en Supabase',
-        message: supabaseError.message
-      })
+    let successCount = 0
+    let errorCount = 0
+    
+    // Procesar cada vela (cada hora)
+    for (const kline of klines) {
+      const closeTime = kline[6] as number // Timestamp de cierre en milisegundos
+      const openPrice = parseFloat(kline[1] as string)
+      const closePrice = parseFloat(kline[4] as string)
+      
+      // Calcular el cambio porcentual desde apertura a cierre
+      const priceChangePercent = ((closePrice - openPrice) / openPrice) * 100
+      
+      // Usar el timestamp real para obtener la fecha y hora correctas en UTC
+      const date = new Date(closeTime)
+      const year = date.getUTCFullYear()
+      const month = String(date.getUTCMonth() + 1).padStart(2, '0')
+      const day = String(date.getUTCDate()).padStart(2, '0')
+      const dateString = `${year}-${month}-${day}` // YYYY-MM-DD
+      const hour = date.getUTCHours() // Hora en UTC
+      
+      // Solo guardar si es del día actual
+      if (dateString === todayString) {
+        const hourlyData = {
+          date: dateString,
+          hour,
+          price: closePrice,
+          price_change_percent: priceChangePercent,
+          timestamp: closeTime
+        }
+        
+        const { error: supabaseError } = await supabase
+          .from('btc_hourly_data')
+          .upsert(hourlyData, {
+            onConflict: 'date,hour',
+            ignoreDuplicates: false
+          })
+        
+        if (supabaseError) {
+          console.error(`❌ Error guardando hora ${hour}:00 -`, supabaseError.message)
+          errorCount++
+        } else {
+          console.log(`✅ Hora ${hour.toString().padStart(2, '0')}:00 guardada - Precio: $${closePrice.toFixed(2)}`)
+          successCount++
+        }
+      }
     }
     
     return response.status(200).json({ 
       success: true, 
-      message: 'Datos guardados correctamente',
+      message: 'Datos del día guardados correctamente',
       data: {
-        timestamp: new Date().toISOString(),
-        price: parseFloat(data.lastPrice),
-        priceChangePercent: parseFloat(data.priceChangePercent),
+        date: todayString,
+        successCount,
+        errorCount,
+        total: successCount + errorCount
       }
     })
   } catch (error) {
