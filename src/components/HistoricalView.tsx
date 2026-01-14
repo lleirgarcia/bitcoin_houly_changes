@@ -93,7 +93,9 @@ const HistoricalView = () => {
     
     // Hora de máxima ganancia
     const maxGainHour = validHours.reduce((max, h) => {
-      if (!max || (h.changePercent! > max.changePercent!)) return h
+      if (!max || (h.changePercent! > max.changePercent)) {
+        return { hour: h.hour, changePercent: h.changePercent! }
+      }
       return max
     }, null as { hour: number; changePercent: number } | null)
     

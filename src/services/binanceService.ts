@@ -469,7 +469,7 @@ export const get24HourGrid = async (comparisonMode: ComparisonMode = 'hour_yeste
     let changePercent: number | null = null
     let price: number | null = null
     
-    if (comparisonMode === 'hour_before' || comparisonMode === 'previous_hour') {
+    if (comparisonMode === 'previous_hour') {
       // Comparar con la hora anterior del mismo día
       if (hour === 0) {
         // La hora 0 no tiene hora anterior, comparar con la hora 23 del día anterior
